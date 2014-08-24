@@ -1,16 +1,16 @@
 #ifndef SHARED_BETWEEN_THREADS_H
 #define SHARED_BETWEEN_THREADS_H
 
-#include <iostream>      
-#include <thread>        
-#include <mutex>         
+#include <iostream>
+#include <thread>
+#include <mutex>
 #include <condition_variable>
 
 // A universal shared primitive.
 // Used for simple locking, state sharing, semaphores and async waiting.
-template<typename DATA> class SharedBetweenThreads {
+template <typename DATA> class SharedBetweenThreads {
   public:
-    SharedBetweenThreads() : data_()  {
+    SharedBetweenThreads() : data_() {
     }
 
     SharedBetweenThreads(const SharedBetweenThreads&) = delete;
@@ -27,7 +27,7 @@ template<typename DATA> class SharedBetweenThreads {
     // Should be called from outside the locked function; calling it from a locked one would cause a deadlock.
     void Poke() {
         std::unique_lock<std::mutex> lock(mutex_);
-        cv_.notify_all(); 
+        cv_.notify_all();
     }
 
     // Simple lock usecase, locked, not notifying others.
@@ -46,14 +46,14 @@ template<typename DATA> class SharedBetweenThreads {
     void MutableUse(const std::function<void(DATA&)>& f) {
         std::unique_lock<std::mutex> lock(mutex_);
         f(data_);
-        cv_.notify_all(); 
+        cv_.notify_all();
     }
 
     // Mutable access, locked, only notifying the others if `true` was returned.
     void MutableUse(const std::function<bool(DATA&)>& f) {
         std::unique_lock<std::mutex> lock(mutex_);
-        if(f(data_)) {
-            cv_.notify_all(); 
+        if (f(data_)) {
+            cv_.notify_all();
         }
     }
 
