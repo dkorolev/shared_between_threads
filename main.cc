@@ -2,6 +2,8 @@
 
 #include <cassert>
 
+#define USING_SCOPED_ACCESSORS
+
 void example1() {
     SharedBetweenThreads<int> shared_int;
 
@@ -9,41 +11,45 @@ void example1() {
                     while (true) {
                         std::this_thread::sleep_for(std::chrono::seconds(2));
                         shared_int.ImmutableUse(
-                            [](int x) { std::cout << "Two seconds have passed, X = " << x << ".\n"; });
+                            [](int x) { std::cout << "Two seconds have passed, X = " << x << "." << std::endl; });
                     }
                 }).detach();
 
     std::thread([&shared_int]() {
                     while (true) {
                         std::this_thread::sleep_for(std::chrono::seconds(5));
-                        shared_int.UseAsLock([]() { std::cout << "Five seconds have passed.\n"; });
+                        shared_int.UseAsLock([]() { std::cout << "Five seconds have passed." << std::endl; });
                     }
                 }).detach();
 
     std::thread([&shared_int]() {
                     while (true) {
-                        shared_int.UseAsLock([]() { std::cout << "Waiting for updates.\n"; });
+                        shared_int.UseAsLock([]() { std::cout << "Waiting for updates." << std::endl; });
                         shared_int.WaitForUpdates();
-                        shared_int.UseAsLock([]() { std::cout << "Update detected!\n"; });
+                        shared_int.UseAsLock([]() { std::cout << "Update detected!" << std::endl; });
                     }
                 }).detach();
 
     std::thread([&shared_int]() {
                     while (true) {
                         std::this_thread::sleep_for(std::chrono::seconds(10));
-                        shared_int.UseAsLock([]() { std::cout << "Ten seconds have passed, poking.\n"; });
+                        shared_int.UseAsLock([]() { std::cout << "Ten seconds have passed, poking." << std::endl; });
                         shared_int.Poke();
-                        shared_int.UseAsLock([]() { std::cout << "Poke successful.\n"; });
+                        shared_int.UseAsLock([]() { std::cout << "Poke successful." << std::endl; });
                     }
                 }).detach();
 
     while (true) {
         int a;
         std::cin >> a;
+#ifdef USING_SCOPED_ACCESSORS
+        { *shared_int.GetMutableScopedAccessor() = a; }
+#else
         shared_int.MutableUse([&a](int& x) {
             x = a;
-            std::cout << "Changed X to " << a << ".\n";
+            std::cout << "Changed X to " << a << "." << std::endl;
         });
+#endif
     }
 }
 
@@ -68,8 +74,8 @@ void example3_does_not_skip_values() {
     std::thread([&shared_object]() {
                     std::this_thread::sleep_for(std::chrono::milliseconds(200));
                     while (true) {
-#ifdef NOT_YET_IMPLEMENTED_SCOPED_OBJECTS
-                        while (!shared_object.GetImmutableScopedObject()->first) {
+#ifdef USING_SCOPED_ACCESSORS
+                        while (!shared_object.GetImmutableScopedAccessor()->first) {
                             shared_object.WaitForUpdates();
                         }
 #else
@@ -85,21 +91,30 @@ void example3_does_not_skip_values() {
                             }
                         }
 #endif
-                        if (ready) {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                            shared_object.MutableUse([](std::pair<bool, int>& p) {
-                                assert(p.first);
-                                std::cout << "Update: " << p.second << std::endl;
-                                p.first = false;
-                            });
+
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+#ifdef USING_SCOPED_ACCESSORS
+                        {
+                            auto p = shared_object.GetMutableScopedAccessor();
+                            assert(p->first);
+                            std::cout << "Update: " << p->second << std::endl;
+                            p->first = false;
                         }
+#else
+                        shared_object.MutableUse([](std::pair<bool, int>& p) {
+                            assert(p.first);
+                            std::cout << "Update: " << p.second << std::endl;
+                            p.first = false;
+                        });
+#endif
                     }
                 }).detach();
 
     int a = 0;
     while (true) {
-#ifdef NOT_YET_IMPLEMENTED_SCOPED_OBJECTS
-        while (shared_object.GetImmutableScopedObject()->first) {
+#ifdef USING_SCOPED_ACCESSORS
+        while (shared_object.GetImmutableScopedAccessor()->first) {
             shared_object.WaitForUpdates();
         }
 #else
@@ -116,16 +131,25 @@ void example3_does_not_skip_values() {
         }
 #endif
 
+#ifdef USING_SCOPED_ACCESSORS
+        {
+            auto p = shared_object.GetMutableScopedAccessor();
+            assert(!p->first);
+            p->first = true;
+            p->second = a++;
+        }
+#else
         shared_object.MutableUse([&a](std::pair<bool, int>& p) {
             assert(!p.first);
             p.first = true;
             p.second = a++;
         });
+#endif
     }
 }
 
 int main() {
-    // example1();
+    example1();
     // example2_would_skip_values();
-    example3_does_not_skip_values();
+    // example3_does_not_skip_values();
 }
