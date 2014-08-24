@@ -1,0 +1,25 @@
+BasedOnStyle: Google
+
+IndentWidth: 4
+TabWidth: 4
+AccessModifierOffset: -2
+
+ColumnLimit: 117
+
+NamespaceIndentation: All
+
+AlwaysBreakTemplateDeclarations: false
+
+# Incompatible with newer clang-format-3.5. Yeah, I know... -- @dkorolev
+# PointerAlignment: Right
+
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: false  # Use multiple lines for parameters.
+BreakConstructorInitializersBeforeComma: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true  # One per line.
+
+AllowShortFunctionsOnASingleLine: false
+
+Cpp11BracedListStyle: true
+
+IndentCaseLabels: true
