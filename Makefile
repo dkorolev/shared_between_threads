@@ -1,15 +1,15 @@
-.phony: test all clean indent
+CPP=clang++ -O3  # -g -DDEBUG
+TARGETS=example1 example2 example3 example4
 
-test: binary
-	./binary
+.PHONY: all clean indent
 
-all: binary
+all: example1 example2 example3 example4
 
 clean:
-	rm -f binary
+	rm -f ${TARGETS}
 
-binary: main.cc shared_between_threads.h
-	g++ -std=c++11 -o $@ $< -lpthread
+%: %.cc
+	${CPP} -std=c++11 -o $@ $< -lpthread
 
 indent:
 	find . -regextype posix-egrep -regex ".*\.(cc|h)" | xargs clang-format-3.5 -i
